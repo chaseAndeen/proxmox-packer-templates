@@ -37,24 +37,28 @@ jobs:
           VARS
 
       - name: Packer Init
-        run: packer init builds/
+        working-directory: builds
+        run: packer init .
 
       - name: Packer Format Check
-        run: packer fmt -check builds/
+        working-directory: builds
+        run: packer fmt -check .
 
       - name: Packer Validate — ubuntu-noble
+        working-directory: builds
         run: |
           packer validate \
-            -var-file=variables.pkrvars.hcl \
+            -var-file=../variables.pkrvars.hcl \
             -var "template_id=9000" \
             -only="ubuntu-noble.proxmox-iso.ubuntu-noble" \
-            builds/
+            .
 
       - name: Packer Validate — debian-bookworm
+        working-directory: builds
         run: |
           packer validate \
-            -var-file=variables.pkrvars.hcl \
+            -var-file=../variables.pkrvars.hcl \
             -var "template_id=9001" \
             -var "preseed_url=http://192.168.1.1:8118/preseed.cfg" \
             -only="debian-bookworm.proxmox-iso.debian-bookworm" \
-            builds/
+            .
