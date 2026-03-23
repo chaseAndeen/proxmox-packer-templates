@@ -1,0 +1,15 @@
+# Copy this to variables.pkrvars.hcl and fill in your values.
+# variables.pkrvars.hcl is gitignored — never commit it.
+#
+# This file assigns VALUES to variables declared in builds/variables.pkr.hcl
+# Syntax is: key = value (no "variable" blocks — those go in .pkr.hcl files)
+
+proxmox_host     = "pve-01.infra.example.com"
+proxmox_port     = 8006
+proxmox_node     = "pve-01"
+storage_pool     = "vmdata"      # ZFS pool — for VM disks and cloud-init drives
+iso_storage_pool = "local"       # dir type storage — required for ISO downloads
+
+# template_id defaults are 9000 (ubuntu) and 9001 (debian)
+# Override here if needed:
+# template_id = 9000

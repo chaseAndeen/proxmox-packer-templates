@@ -1,0 +1,48 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+
+  source:
+    id: ubuntu-server-minimal
+
+  # Single partition, no LVM
+  storage:
+    layout:
+      name: direct
+
+  # Creates a temporary 'packer' user that Packer SSHs in as
+  # This user is removed by the remove-packer-user systemd service on first boot
+  identity:
+    hostname: packer-build
+    username: packer
+    # Plain text: PackerBuild
+    password: "$6$w/BZs22CecOnB.M3$/5xk..P7roktc0Faau1CNGoHpfBPn6swOTP39pI27SYa842khAJNKQDeyfDAr3Jgigy98Z9G2U7PXZLaqmPY3."
+
+  # Enable SSH with password auth so Packer can connect
+  ssh:
+    install-server: true
+    allow-pw: true
+
+  # Bare minimum packages — Ansible provision.yml handles the rest
+  packages:
+    - qemu-guest-agent
+    - python3
+    - sudo
+    - curl
+
+  late-commands:
+    # Set packer user password — pipe from outside curtin avoids quoting issues
+    - echo "packer:PackerBuild" | curtin in-target --target=/target -- chpasswd
+    # Give packer user passwordless sudo so Ansible can become root
+    - echo "packer ALL=(ALL) NOPASSWD:ALL" > /target/etc/sudoers.d/packer
+    - chmod 0440 /target/etc/sudoers.d/packer
+    # Enable password auth — delete cloud-init's drop-in which hardcodes it off
+    # and set it explicitly in the main config
+    - rm -f /target/etc/ssh/sshd_config.d/50-cloud-init.conf
+    - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /target/etc/ssh/sshd_config
+    # Enable guest agent at boot
+    - curtin in-target --target=/target systemctl enable qemu-guest-agent

@@ -1,0 +1,6 @@
+packer_cache/
+variables.pkrvars.hcl
+*.secrets
+*.env
+.DS_Store
+Thumbs.db

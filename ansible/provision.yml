@@ -1,0 +1,328 @@
+---
+- name: Golden Image Provisioning
+  hosts: all
+  become: true
+
+  vars:
+    ssh_port: 2222
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # System baseline
+    # -------------------------------------------------------------------------
+
+    - name: Set timezone to UTC
+      community.general.timezone:
+        name: UTC
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 0
+
+    - name: Full system upgrade
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - sudo
+          - curl
+          - wget
+          - ca-certificates
+          - gnupg
+          - python3
+          - python3-apt
+          - qemu-guest-agent
+          - chrony
+          - unattended-upgrades
+          - apt-listchanges
+          - cloud-init
+          - vim
+          - tmux
+          - htop
+        state: present
+
+    - name: Remove unnecessary packages
+      ansible.builtin.apt:
+        autoremove: true
+        purge: true
+
+    # -------------------------------------------------------------------------
+    # NTP — chrony
+    # -------------------------------------------------------------------------
+
+    - name: Configure chrony
+      ansible.builtin.copy:
+        dest: /etc/chrony/chrony.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          pool pool.ntp.org iburst maxsources 4
+          cmdallow 127.0.0.1
+          driftfile /var/lib/chrony/chrony.drift
+          ntsdumpdir /var/lib/chrony
+          rtcsync
+          makestep 1 3
+
+    - name: Enable and start chrony
+      ansible.builtin.systemd:
+        name: chrony
+        enabled: true
+        state: started
+
+    # -------------------------------------------------------------------------
+    # Unattended upgrades — security patches only, auto-reboot at 02:00
+    # -------------------------------------------------------------------------
+
+    - name: Configure unattended-upgrades
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          Unattended-Upgrade::Allowed-Origins {
+              "${distro_id}:${distro_codename}-security";
+              "${distro_id}ESMApps:${distro_codename}-apps-security";
+              "${distro_id}ESM:${distro_codename}-infra-security";
+          };
+
+          // Kernel upgrades managed by Packer rebuilds, not auto-upgrade
+          Unattended-Upgrade::Package-Blacklist {
+              "linux-image*";
+              "linux-headers*";
+              "linux-modules*";
+          };
+
+          Unattended-Upgrade::Remove-Unused-Dependencies "true";
+          Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+
+          // Auto-reboot if required, at 02:00
+          Unattended-Upgrade::Automatic-Reboot "true";
+          Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+
+          Unattended-Upgrade::Mail "";
+          Unattended-Upgrade::MailOnlyOnError "true";
+          Unattended-Upgrade::SyslogEnable "true";
+
+    - name: Configure apt auto-upgrade schedule
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          APT::Periodic::AutocleanInterval "7";
+          APT::Periodic::Download-Upgradeable-Packages "1";
+
+    - name: Enable unattended-upgrades service
+      ansible.builtin.systemd:
+        name: unattended-upgrades
+        enabled: true
+        state: started
+
+    # -------------------------------------------------------------------------
+    # QEMU Guest Agent
+    # -------------------------------------------------------------------------
+
+    - name: Enable and start qemu-guest-agent
+      ansible.builtin.systemd:
+        name: qemu-guest-agent
+        enabled: true
+        state: started
+
+    # -------------------------------------------------------------------------
+    # Storage — fstrim for ZFS-backed virtio disks
+    # -------------------------------------------------------------------------
+
+    - name: Enable fstrim timer
+      ansible.builtin.systemd:
+        name: fstrim.timer
+        enabled: true
+        state: started
+
+    # -------------------------------------------------------------------------
+    # Journald — cap log size to prevent disk fill on small VMs
+    # -------------------------------------------------------------------------
+
+    - name: Ensure journald config directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/journald.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Configure journald log limits
+      ansible.builtin.copy:
+        dest: /etc/systemd/journald.conf.d/99-limits.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Journal]
+          SystemMaxUse=500M
+          SystemKeepFree=100M
+          SystemMaxFileSize=50M
+          MaxRetentionSec=1month
+          Compress=yes
+      notify: Restart journald
+
+    # -------------------------------------------------------------------------
+    # Cloud-init — datasource config for faster boot
+    # -------------------------------------------------------------------------
+
+    - name: Ensure cloud-init config directory exists
+      ansible.builtin.file:
+        path: /etc/cloud/cloud.cfg.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Configure cloud-init datasource
+      ansible.builtin.copy:
+        dest: /etc/cloud/cloud.cfg.d/99-datasource.cfg
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Only look for NoCloud and ConfigDrive — skips AWS/Azure/GCP probing
+          # Speeds up boot significantly on Proxmox
+          datasource_list: [ NoCloud, ConfigDrive, None ]
+
+    # -------------------------------------------------------------------------
+    # SSH hardening
+    # -------------------------------------------------------------------------
+
+    - name: Set SSH port
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/10-port.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          Port {{ ssh_port }}
+
+    - name: Deploy hardened SSH config
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/99-hardening.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          PermitRootLogin no
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PubkeyAuthentication yes
+          UsePAM yes
+
+          X11Forwarding no
+          AllowAgentForwarding no
+
+          KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+          Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com
+          MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+
+          LogLevel VERBOSE
+          UseDNS no
+
+    - name: Lock root password
+      ansible.builtin.user:
+        name: root
+        password_lock: true
+
+    - name: Restart SSH to apply config
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
+
+    # -------------------------------------------------------------------------
+    # Cleanup — generalize image, schedule build user removal on first boot
+    # -------------------------------------------------------------------------
+
+    # We can't delete the packer user during Ansible since Ansible runs as packer.
+    # Instead, create a one-shot systemd service that removes it on first boot,
+    # before any real user ever logs in. It self-disables after running.
+    - name: Create packer user removal service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/remove-packer-user.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Remove temporary Packer build user
+          After=network.target
+          ConditionPathExists=/home/packer
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/sbin/userdel -r packer
+          ExecStartPost=/bin/rm -f /etc/sudoers.d/packer
+          ExecStartPost=/bin/systemctl disable remove-packer-user.service
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable packer user removal service
+      ansible.builtin.systemd:
+        name: remove-packer-user
+        enabled: true
+        daemon_reload: true
+
+    - name: Truncate machine-id (regenerated on first boot)
+      ansible.builtin.copy:
+        dest: /etc/machine-id
+        content: ""
+        owner: root
+        group: root
+        mode: '0444'
+
+    - name: Remove SSH host keys (regenerated on first boot)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/ssh/ssh_host_rsa_key
+        - /etc/ssh/ssh_host_rsa_key.pub
+        - /etc/ssh/ssh_host_ecdsa_key
+        - /etc/ssh/ssh_host_ecdsa_key.pub
+        - /etc/ssh/ssh_host_ed25519_key
+        - /etc/ssh/ssh_host_ed25519_key.pub
+
+    - name: Clean apt cache
+      ansible.builtin.apt:
+        clean: true
+
+    - name: Reset cloud-init state (runs fresh on every clone)
+      ansible.builtin.command: cloud-init clean --logs --seed
+      changed_when: false
+
+    - name: Clear bash history for root
+      ansible.builtin.file:
+        path: /root/.bash_history
+        state: absent
+
+    - name: Truncate system logs
+      ansible.builtin.shell: |
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+      changed_when: false
+
+  # -------------------------------------------------------------------------
+  # Handlers
+  # -------------------------------------------------------------------------
+
+  handlers:
+    - name: Restart journald
+      ansible.builtin.systemd:
+        name: systemd-journald
+        state: restarted

@@ -1,0 +1,60 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  validate:
+    name: Packer Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@v3.1.0
+        with:
+          version: latest
+
+      - name: Create stub vars file
+        run: |
+          cat > variables.pkrvars.hcl << 'VARS'
+          proxmox_host         = "pve-01.infra.example.com"
+          proxmox_port         = 8006
+          proxmox_node         = "pve-01"
+          proxmox_token_secret = "dummy-secret"
+          storage_pool         = "vmdata"
+          iso_storage_pool     = "local"
+          template_id          = 9000
+          VARS
+
+      - name: Packer Init
+        run: packer init builds/
+
+      - name: Packer Format Check
+        run: packer fmt -check builds/
+
+      - name: Packer Validate — ubuntu-noble
+        run: |
+          packer validate \
+            -var-file=variables.pkrvars.hcl \
+            -var "template_id=9000" \
+            -only="ubuntu-noble.proxmox-iso.ubuntu-noble" \
+            builds/
+
+      - name: Packer Validate — debian-bookworm
+        run: |
+          packer validate \
+            -var-file=variables.pkrvars.hcl \
+            -var "template_id=9001" \
+            -var "preseed_url=http://192.168.1.1:8118/preseed.cfg" \
+            -only="debian-bookworm.proxmox-iso.debian-bookworm" \
+            builds/
