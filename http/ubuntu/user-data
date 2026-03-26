@@ -44,5 +44,9 @@ autoinstall:
     # and set it explicitly in the main config
     - rm -f /target/etc/ssh/sshd_config.d/50-cloud-init.conf
     - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /target/etc/ssh/sshd_config
+    # Force eth0 naming — Proxmox cloud-init always generates eth0 in network-config
+    # Remove if bpg/proxmox provider adds interface name configuration
+    - sed -i 's/GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"/' /target/etc/default/grub
+    - curtin in-target --target=/target update-grub
     # Enable guest agent at boot
     - curtin in-target --target=/target systemctl enable qemu-guest-agent

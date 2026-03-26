@@ -45,6 +45,14 @@
           - htop
         state: present
 
+    - name: Install ifupdown and resolvconf (Debian only)
+      ansible.builtin.apt:
+        name:
+          - ifupdown
+          - resolvconf
+        state: present
+      when: ansible_distribution == "Debian"
+
     - name: Remove unnecessary packages
       ansible.builtin.apt:
         autoremove: true
@@ -260,11 +268,11 @@
           [Unit]
           Description=Remove temporary Packer build user
           After=network.target
-          ConditionPathExists=/home/packer
+          ConditionPathExists=/etc/sudoers.d/packer
 
           [Service]
           Type=oneshot
-          ExecStart=/usr/sbin/userdel -r packer
+          ExecStart=-/usr/sbin/userdel -r packer
           ExecStartPost=/bin/rm -f /etc/sudoers.d/packer
           ExecStartPost=/bin/systemctl disable remove-packer-user.service
           RemainAfterExit=yes
@@ -284,7 +292,7 @@
         content: ""
         owner: root
         group: root
-        mode: '0444'
+        mode: '0644'
 
     - name: Remove SSH host keys (regenerated on first boot)
       ansible.builtin.file:

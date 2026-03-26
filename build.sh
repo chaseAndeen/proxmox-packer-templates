@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./build.sh ubuntu-noble
-#   ./build.sh debian-bookworm
+#   ./build.sh debian-trixie
 #
 # Requirements (one-time setup on the build machine):
 #   1. WSL2 mirrored networking — add to C:\Users\<you>\.wslconfig:
@@ -29,7 +29,7 @@ PRESEED_PORT="8118"
 # ---------------------------------------------------------------------------
 
 if [[ -z "$TARGET" ]]; then
-  echo "Usage: $0 <ubuntu-noble|debian-bookworm>"
+  echo "Usage: $0 <ubuntu-noble|debian-trixie>"
   exit 1
 fi
 
@@ -85,7 +85,7 @@ fi
 # Debian-specific preflight
 HTTP_PID=""
 HTTP_IP=""
-if [[ "$TARGET" == "debian-bookworm" ]]; then
+if [[ "$TARGET" == "debian-trixie" ]]; then
   # WSL has a real LAN IP (mirrored networking)
   HTTP_IP=$(ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \K\S+' || true)
   if [[ -z "$HTTP_IP" || "$HTTP_IP" == 10.255.255.254 ]]; then
@@ -119,7 +119,7 @@ fi
 # Debian: start preseed HTTP server
 # ---------------------------------------------------------------------------
 
-if [[ "$TARGET" == "debian-bookworm" ]]; then
+if [[ "$TARGET" == "debian-trixie" ]]; then
   echo "==> Starting preseed HTTP server on ${HTTP_IP}:${PRESEED_PORT}..."
   python3 -m http.server "$PRESEED_PORT" \
     --directory "$SCRIPT_DIR/http/debian" \
@@ -164,7 +164,7 @@ cd "$BUILDS_DIR"
 packer init .
 
 EXTRA_VARS=()
-if [[ "$TARGET" == "debian-bookworm" ]]; then
+if [[ "$TARGET" == "debian-trixie" ]]; then
   EXTRA_VARS+=(-var "preseed_url=http://${HTTP_IP}:${PRESEED_PORT}/preseed.cfg")
   EXTRA_VARS+=(-var "template_id=9001")
 elif [[ "$TARGET" == "ubuntu-noble" ]]; then

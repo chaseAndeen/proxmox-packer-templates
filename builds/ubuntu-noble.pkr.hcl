@@ -33,6 +33,7 @@ source "proxmox-iso" "ubuntu-noble" {
   # Hardware
   cores           = 2
   memory          = 2048
+  cpu_type        = "host"
   os              = "l26"
   scsi_controller = "virtio-scsi-single"
   qemu_agent      = true
@@ -74,7 +75,7 @@ source "proxmox-iso" "ubuntu-noble" {
     "<wait5>",
     "<wait5>",
     "c<wait>",
-    "linux /casper/vmlinuz --- autoinstall ds=nocloud;s=/cidata/",
+    "linux /casper/vmlinuz --- autoinstall ds=nocloud;s=/cidata/ net.ifnames=0 biosdevname=0",
     "<enter><wait>",
     "initrd /casper/initrd",
     "<enter><wait>",

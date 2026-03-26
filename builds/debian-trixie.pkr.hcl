@@ -11,7 +11,7 @@ variable "preseed_url" {
 # Source
 # ---------------------------------------------------------------------------
 
-source "proxmox-iso" "debian-bookworm" {
+source "proxmox-iso" "debian-trixie" {
   # Connection
   proxmox_url              = "https://${var.proxmox_host}:${var.proxmox_port}/api2/json"
   username                 = var.proxmox_token_id
@@ -21,14 +21,14 @@ source "proxmox-iso" "debian-bookworm" {
 
   # Template identity
   vm_id   = var.template_id
-  vm_name = "tpl-debian-bookworm"
-  tags    = "template;debian;bookworm"
+  vm_name = "tpl-debian-trixie"
+  tags    = "template;debian;trixie"
 
   # ISO — Proxmox downloads directly. Skips download if already cached.
   boot_iso {
     type             = "ide"
-    iso_url          = "https://cdimage.debian.org/images/archive/12.12.0/amd64/iso-cd/debian-12.12.0-amd64-netinst.iso"
-    iso_checksum     = "sha256:dfc30e04fd095ac2c07e998f145e94bb8f7d3a8eca3a631d2eb012398deae531"
+    iso_url          = "https://cdimage.debian.org/images/release/current/amd64/iso-cd/debian-13.4.0-amd64-netinst.iso"
+    iso_checksum     = "sha256:0b813535dd76f2ea96eff908c65e8521512c92a0631fd41c95756ffd7d4896dc"
     iso_storage_pool = var.iso_storage_pool
     iso_download_pve = true
     unmount          = true
@@ -39,6 +39,7 @@ source "proxmox-iso" "debian-bookworm" {
   # Hardware
   cores           = 2
   memory          = 2048
+  cpu_type        = "host"
   os              = "l26"
   scsi_controller = "virtio-scsi-single"
   qemu_agent      = true
@@ -80,6 +81,7 @@ source "proxmox-iso" "debian-bookworm" {
     "debconf/frontend=noninteractive ",
     "console-setup/ask_detect=false ",
     "console-keymaps-at/keymap=us ",
+    "net.ifnames=0 biosdevname=0 ",
     "<enter>"
   ]
 
@@ -91,7 +93,7 @@ source "proxmox-iso" "debian-bookworm" {
   ssh_port               = 22
   ssh_handshake_attempts = 50
 
-  template_description = "Debian 12 Bookworm golden image — built with Packer on ${timestamp()}"
+  template_description = "Debian 13 trixie golden image — built with Packer on ${timestamp()}"
 }
 
 # ---------------------------------------------------------------------------
@@ -99,8 +101,8 @@ source "proxmox-iso" "debian-bookworm" {
 # ---------------------------------------------------------------------------
 
 build {
-  name    = "debian-bookworm"
-  sources = ["source.proxmox-iso.debian-bookworm"]
+  name    = "debian-trixie"
+  sources = ["source.proxmox-iso.debian-trixie"]
 
   provisioner "ansible" {
     playbook_file = "../ansible/provision.yml"

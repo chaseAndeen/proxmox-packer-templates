@@ -4,7 +4,7 @@ Packer builds for golden VM templates on Proxmox VE.
 
 Currently produces:
 - `tpl-ubuntu-noble` (VM ID 9000) — Ubuntu 24.04 LTS
-- `tpl-debian-bookworm` (VM ID 9001) — Debian 12
+- `tpl-debian-trixie` (VM ID 9001) — Debian 13
 
 ---
 
@@ -157,7 +157,7 @@ chmod +x build.sh
 
 ```bash
 ./build.sh ubuntu-noble
-./build.sh debian-bookworm
+./build.sh debian-trixie
 ```
 
 **First run:** Proxmox downloads the ISO directly (~3GB Ubuntu, ~670MB Debian).
