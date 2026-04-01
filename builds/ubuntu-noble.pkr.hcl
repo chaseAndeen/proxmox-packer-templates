@@ -74,11 +74,11 @@ source "proxmox-iso" "ubuntu-noble" {
     "<wait5>",
     "<wait5>",
     "<wait5>",
-    "c<wait>",
+    "c<wait3>",
     "linux /casper/vmlinuz --- autoinstall ds=nocloud;s=/cidata/ net.ifnames=0 biosdevname=0",
-    "<enter><wait>",
+    "<enter><wait3>",
     "initrd /casper/initrd",
-    "<enter><wait>",
+    "<enter><wait5>",
     "boot",
     "<enter>"
   ]
