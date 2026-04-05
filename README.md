@@ -26,7 +26,7 @@ usernames, or reprovision VMs without rebuilding the template.
 | OS | Full dist-upgrade at build time |
 | Timezone | UTC |
 | NTP | chrony, pool.ntp.org |
-| Security patching | unattended-upgrades (security only, auto-reboot 02:00) |
+| Security patching | unattended-upgrades (security only) |
 | SSH | Port 2222, no root, no passwords, strong ciphers only |
 | QEMU | qemu-guest-agent enabled |
 | Storage | fstrim.timer enabled |
