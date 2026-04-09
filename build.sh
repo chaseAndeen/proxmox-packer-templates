@@ -15,13 +15,21 @@
 #   2. Windows Firewall rule for Debian preseed HTTP server:
 #        New-NetFirewallRule -DisplayName "Packer Preseed HTTP" \
 #          -Direction Inbound -Protocol TCP -LocalPort 8118 -Action Allow
+#
+# Environment overrides:
+#   AWS_PROFILE           — AWS CLI profile         (default: InfraProvisioner)
+#   AWS_REGION            — AWS region              (default: us-east-1)
+#   UBUNTU_TEMPLATE_ID    — Proxmox VM ID for Ubuntu template (default: 9000)
+#   DEBIAN_TEMPLATE_ID    — Proxmox VM ID for Debian template (default: 9001)
 # ---------------------------------------------------------------------------
 
 set -euo pipefail
 
 TARGET="${1:-}"
-AWS_PROFILE="InfraProvisioner"
-AWS_REGION="us-east-1"
+AWS_PROFILE="${AWS_PROFILE:-InfraProvisioner}"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+UBUNTU_TEMPLATE_ID="${UBUNTU_TEMPLATE_ID:-9000}"
+DEBIAN_TEMPLATE_ID="${DEBIAN_TEMPLATE_ID:-9001}"
 PRESEED_PORT="8118"
 
 # ---------------------------------------------------------------------------
@@ -166,9 +174,9 @@ packer init .
 EXTRA_VARS=()
 if [[ "$TARGET" == "debian-trixie" ]]; then
   EXTRA_VARS+=(-var "preseed_url=http://${HTTP_IP}:${PRESEED_PORT}/preseed.cfg")
-  EXTRA_VARS+=(-var "template_id=9001")
+  EXTRA_VARS+=(-var "template_id=${DEBIAN_TEMPLATE_ID}")
 elif [[ "$TARGET" == "ubuntu-noble" ]]; then
-  EXTRA_VARS+=(-var "template_id=9000")
+  EXTRA_VARS+=(-var "template_id=${UBUNTU_TEMPLATE_ID}")
 fi
 
 packer build \

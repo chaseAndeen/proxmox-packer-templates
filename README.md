@@ -104,7 +104,8 @@ ansible-galaxy collection install ansible.posix community.general
 ```bash
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip && sudo ./aws/install && rm -rf awscliv2.zip aws/
-aws configure sso --profile InfraProvisioner
+aws configure sso --profile <aws_profile>
+aws sso login --profile <aws_profile>
 ```
 
 ---
@@ -160,6 +161,20 @@ chmod +x build.sh
 ./build.sh debian-trixie
 ```
 
+### Environment variable overrides
+
+| Variable | Default | Description |
+|---|---|---|
+| `AWS_PROFILE` | `InfraProvisioner` | AWS CLI profile for SSM secret fetch |
+| `AWS_REGION` | `us-east-1` | AWS region |
+| `UBUNTU_TEMPLATE_ID` | `9000` | Proxmox VM ID for the Ubuntu template |
+| `DEBIAN_TEMPLATE_ID` | `9001` | Proxmox VM ID for the Debian template |
+
+```bash
+# Example: use a different profile or template ID
+AWS_PROFILE=MyProfile UBUNTU_TEMPLATE_ID=9010 ./build.sh ubuntu-noble
+```
+
 **First run:** Proxmox downloads the ISO directly (~3GB Ubuntu, ~670MB Debian).
 Subsequent builds reuse the cached ISO.
 
@@ -179,7 +194,7 @@ build.sh
         ├── VM boots → Ubuntu autoinstall runs (~10 min)
         ├── Packer: SSH in as root
         ├── Ansible: provision.yml
-        └── Proxmox: convert to template (ID 9000)
+        └── Proxmox: convert to template (UBUNTU_TEMPLATE_ID, default 9000)
 ```
 
 ### Debian
@@ -194,7 +209,7 @@ build.sh
         ├── Debian installer runs automated install (~15 min)
         ├── Packer: SSH in as root
         ├── Ansible: provision.yml
-        └── Proxmox: convert to template (ID 9001)
+        └── Proxmox: convert to template (DEBIAN_TEMPLATE_ID, default 9001)
   └── Stop python3 HTTP server
 ```
 
