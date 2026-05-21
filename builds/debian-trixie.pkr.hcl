@@ -1,6 +1,10 @@
 # packer {} block and shared variables are in variables.pkr.hcl
 # template_id passed by build.sh via -var (ubuntu: 9000, debian: 9001)
 
+locals {
+  timestamp = regex_replace(timestamp(), "[- TZ:]", "")
+}
+
 variable "preseed_url" {
   type        = string
   description = "Full URL to preseed.cfg — set automatically by build.sh"
@@ -21,7 +25,7 @@ source "proxmox-iso" "debian-trixie" {
 
   # Template identity
   vm_id   = var.template_id
-  vm_name = "tpl-debian-trixie"
+  vm_name = "tpl-debian-trixie-${local.timestamp}"
   tags    = "template;debian;trixie"
 
   # ISO — Proxmox downloads directly. Skips download if already cached.
