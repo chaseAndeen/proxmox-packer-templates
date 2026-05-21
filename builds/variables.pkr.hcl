@@ -11,6 +11,10 @@ packer {
   }
 }
 
+locals {
+  timestamp = regex_replace(timestamp(), "[- TZ:]", "")
+}
+
 # ---------------------------------------------------------------------------
 # Shared variables — used by all builds
 # Values supplied via variables.pkrvars.hcl at build time

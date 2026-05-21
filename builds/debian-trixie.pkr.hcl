@@ -1,10 +1,6 @@
 # packer {} block and shared variables are in variables.pkr.hcl
 # template_id passed by build.sh via -var (ubuntu: 9000, debian: 9001)
 
-locals {
-  timestamp = regex_replace(timestamp(), "[- TZ:]", "")
-}
-
 variable "preseed_url" {
   type        = string
   description = "Full URL to preseed.cfg — set automatically by build.sh"
