@@ -1,6 +1,10 @@
 # packer {} block and shared variables are in variables.pkr.hcl
 # template_id passed by build.sh via -var (ubuntu: 9000, debian: 9001)
 
+locals {
+  timestamp = regex_replace(timestamp(), "[- TZ:]", "")
+}
+
 # ---------------------------------------------------------------------------
 # Source
 # ---------------------------------------------------------------------------
@@ -15,7 +19,7 @@ source "proxmox-iso" "ubuntu-noble" {
 
   # Template identity
   vm_id   = var.template_id
-  vm_name = "tpl-ubuntu-noble"
+  vm_name = "tpl-ubuntu-noble-${local.timestamp}"
   tags    = "template;ubuntu;noble"
 
   # ISO — Proxmox downloads directly. Skips download if already cached.
