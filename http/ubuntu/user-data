@@ -9,10 +9,13 @@ autoinstall:
   source:
     id: ubuntu-server-minimal
 
-  # Single partition, no LVM
+  # Single partition, no LVM, no swap partition
+  # Swapfile created by Ansible — keeps root as last partition for growpart
   storage:
     layout:
       name: direct
+  swap:
+    size: 0
 
   # Creates a temporary 'packer' user that Packer SSHs in as
   # This user is removed by the remove-packer-user systemd service on first boot

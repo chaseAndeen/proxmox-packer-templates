@@ -1,0 +1,29 @@
+{
+  "name": "packer-templates",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "postCreateCommand": "packer version && ansible --version && aws --version && xorriso -version | head -n 1",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "hashicorp.hcl",
+        "redhat.ansible",
+        "amazonwebservices.aws-toolkit-vscode",
+        "ms-python.python"
+      ],
+      "settings": {
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash"
+          }
+        }
+      }
+    }
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+  ],
+  "remoteUser": "vscode"
+}

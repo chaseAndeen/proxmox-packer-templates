@@ -40,6 +40,7 @@
           - unattended-upgrades
           - apt-listchanges
           - cloud-init
+          - cloud-guest-utils
           - vim
           - tmux
           - htop
@@ -152,6 +153,41 @@
         state: started
 
     # -------------------------------------------------------------------------
+    # Swap — 2GB swapfile (no swap partition; keeps root as last partition
+    # so growpart can expand it on first boot after disk resize)
+    # -------------------------------------------------------------------------
+
+    - name: Check if swapfile is active
+      ansible.builtin.shell: swapon --show | grep -q '/swapfile'
+      register: swap_check
+      changed_when: false
+      failed_when: false
+
+    - name: Create 2GB swapfile
+      ansible.builtin.command: dd if=/dev/zero of=/swapfile bs=1M count=2048
+      args:
+        creates: /swapfile
+
+    - name: Set swapfile permissions
+      ansible.builtin.file:
+        path: /swapfile
+        mode: '0600'
+
+    - name: Format swapfile as swap
+      ansible.builtin.command: mkswap /swapfile
+      when: swap_check.rc != 0
+
+    - name: Enable swapfile
+      ansible.builtin.command: swapon /swapfile
+      when: swap_check.rc != 0
+
+    - name: Add swapfile to fstab
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: '/swapfile none swap sw 0 0'
+        state: present
+
+    # -------------------------------------------------------------------------
     # Journald — cap log size to prevent disk fill on small VMs
     # -------------------------------------------------------------------------
 
@@ -200,6 +236,20 @@
           # Only look for NoCloud and ConfigDrive — skips AWS/Azure/GCP probing
           # Speeds up boot significantly on Proxmox
           datasource_list: [ NoCloud, ConfigDrive, None ]
+
+    - name: Configure cloud-init growpart
+      ansible.builtin.copy:
+        dest: /etc/cloud/cloud.cfg.d/99-growpart.cfg
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Expand root partition and filesystem on first boot
+          # Required after disk resize at deploy time (e.g. via Terraform)
+          # Without this, the filesystem won't fill the resized disk
+          growpart:
+            mode: auto
+            devices: ['/']
 
     # -------------------------------------------------------------------------
     # SSH hardening
